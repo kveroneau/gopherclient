@@ -5,8 +5,8 @@ unit main;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, IpHtml, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, ExtCtrls, StdCtrls, gopherclient, URIParser;
+  Classes, SysUtils, FileUtil, IpHtml, Ipfilebroker, Forms, Controls, Graphics,
+  Dialogs, ComCtrls, ExtCtrls, StdCtrls, gopherclient, URIParser, base64;
 
 type
 
@@ -17,6 +17,7 @@ type
     GopherAddr: TEdit;
     ImageViewer: TImage;
     ImageList1: TImageList;
+    FileDataProvider: TIpFileDataProvider;
     IpHtmlPanel1: TIpHtmlPanel;
     Label1: TLabel;
     TreeView1: TTreeView;
@@ -26,6 +27,7 @@ type
     procedure TreeView1Click(Sender: TObject);
     procedure TreeView1Expanding(Sender: TObject; Node: TTreeNode;
       var AllowExpansion: Boolean);
+    procedure GetImage(Sender: TIpHtmlNode; const URL: String; var Picture: TPicture);
   private
     GopherItems: Array of PGopherMenu;
     function GetPointer(MenuItem: TGopherMenu): PGopherMenu;
@@ -47,6 +49,7 @@ procedure TForm1.FormShow(Sender: TObject);
 var
   root: TTreeNode;
 begin
+  FileDataProvider.OnGetImage:=@GetImage;
   root:=TreeView1.Items.Add(nil, 'gopher.veroneau.net:70');
   root.ImageIndex:=0;
   root.SelectedIndex:=0;
@@ -105,6 +108,7 @@ var
   data: TMemoryStream;
   entry: TGopherMenu;
   buf: String;
+  root: TTreeNode;
 begin
   if (TreeView1.Selected <> nil) and (TreeView1.Selected.Data <> nil) then
   begin
@@ -140,6 +144,23 @@ begin
           IpHtmlPanel1.SetHtmlFromStream(data);
           data.Free;
         end;
+      '7':
+        begin
+          TreeView1.Selected:=nil;
+          buf:=InputBox(item^.host, item^.selector, '');
+          root:=TreeView1.Items.Add(nil, buf);
+          root.ImageIndex:=0;
+          root.SelectedIndex:=0;
+          PopulateNode(root, item^.host, item^.port, item^.selector+#9+buf);
+        end;
+      'h':
+        begin
+          gopher:=TGopherClient.Create(Self);
+          gopher.SetHost(item^.host, item^.port);
+          IpHtmlPanel1.Visible:=True;
+          IpHtmlPanel1.SetHtmlFromStream(gopher.SendSelector(item^.selector, False));
+          gopher.Free;
+        end;
       'I':
         begin
           gopher:=TGopherClient.Create(Self);
@@ -164,6 +185,26 @@ begin
     item:=Node.Data;
     PopulateNode(Node, item^.host, item^.port, item^.selector);
   end;
+end;
+
+procedure TForm1.GetImage(Sender: TIpHtmlNode; const URL: String;
+  var Picture: TPicture);
+var
+  data: TStringList;
+  strm: TMemoryStream;
+  buf: String;
+begin
+  strm:=TMemoryStream.Create;
+  data:=TStringList.Create;
+  data.Delimiter:=',';
+  data.StrictDelimiter:=True;
+  data.DelimitedText:=URL;
+  buf:=DecodeStringBase64(data[1]);
+  strm.Write(buf[1], Length(buf));
+  data.Free;
+  strm.Seek(0, soBeginning);
+  {Picture.LoadFromStream(strm);}
+  strm.Free;
 end;
 
 function TForm1.GetPointer(MenuItem: TGopherMenu): PGopherMenu;

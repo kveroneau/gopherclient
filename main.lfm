@@ -28,6 +28,7 @@ object Form1: TForm1
     Height = 541
     Top = 24
     Width = 624
+    DataProvider = FileDataProvider
     FixedTypeface = 'Courier New'
     DefaultTypeFace = 'default'
     DefaultFontSize = 12
@@ -144,5 +145,9 @@ object Form1: TForm1
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000
     }
+  end
+  object FileDataProvider: TIpFileDataProvider
+    left = 749
+    top = 506
   end
 end
