@@ -30,7 +30,7 @@ Type
   Private
     FHost: String;
     FPort: Integer;
-    Procedure GetEntry(data: TMemoryStream; entry: TStringList);
+    Procedure GetEntry(data: TStream; entry: TStringList);
   Public
     Constructor Create(AOwner: TComponent); override;
     Destructor Destroy; override;
@@ -38,13 +38,14 @@ Type
     Function SendSelector(Const selector: String; Const query: String): TMemoryStream;
     Function SendSelector(Const selector: String; Const text: Boolean): TMemoryStream;
     Function GetMenu(Const selector: String): AGopherMenu;
+    function GetMenu(data: TStream): AGopherMenu;
   end;
 
 implementation
 
 { TGopherClient }
 
-procedure TGopherClient.GetEntry(data: TMemoryStream; entry: TStringList);
+procedure TGopherClient.GetEntry(data: TStream; entry: TStringList);
 var
   line: String;
   b: Byte;
@@ -83,7 +84,8 @@ begin
   Result:=SendSelector(selector+#9+query, False);
 end;
 
-function TGopherClient.SendSelector(const selector: String; Const text: Boolean): TMemoryStream;
+function TGopherClient.SendSelector(const selector: String; const text: Boolean
+  ): TMemoryStream;
 var
   sock: TInetSocket;
   buf: String;
@@ -93,33 +95,42 @@ begin
   if text then
     Result.Write('<pre>', 5);
   buf := selector+#13#10;
-  sock:=TInetSocket.Create(FHost, FPort);
-  sock.Write(buf[1], Length(buf));
-  buf:='';
-  SetLength(buf, 4096);
-  Repeat
-    size:=sock.Read(buf[1], 4096);
-    if (size>0) then
-      Result.Write(buf[1], size);
-  until (size=0);
-  sock.Free;
+  Try
+    sock:=TInetSocket.Create(FHost, FPort);
+    sock.Write(buf[1], Length(buf));
+    buf:='';
+    SetLength(buf, 4096);
+    Repeat
+      size:=sock.Read(buf[1], 4096);
+      if (size>0) then
+        Result.Write(buf[1], size);
+    until (size=0);
+    sock.Free;
+  Except
+    Result.Clear;
+  end;
   if text then
     Result.Write('</pre>', 6);
   Result.Seek(0, soBeginning);
 end;
 
 function TGopherClient.GetMenu(const selector: String): AGopherMenu;
+begin
+  Result:=GetMenu(SendSelector(selector, False));
+end;
+
+function TGopherClient.GetMenu(data: TStream): AGopherMenu;
 var
-  data: TMemoryStream;
   entry: TStringList;
   i: Integer;
 begin
   SetLength(Result, 0);
-  data:=SendSelector(selector, False);
+  if data.Size = 0 then
+    Exit;
   entry:=TStringList.Create;
   Repeat
     GetEntry(data, entry);
-    if Length(entry.Strings[0]) > 1 then
+    if (entry.Count = 4) and (Length(entry.Strings[0]) > 1) then
     begin
       i:=Length(Result);
       SetLength(Result, i+1);
