@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 212
   Width = 926
   Caption = 'Gopher Client'
-  ClientHeight = 567
+  ClientHeight = 564
   ClientWidth = 926
   Menu = MenuBar
   OnResize = FormResize
@@ -12,17 +12,17 @@ object Form1: TForm1
   LCLVersion = '1.4.4.0'
   object Label1: TLabel
     Left = 8
-    Height = 14
+    Height = 15
     Top = 2
-    Width = 105
+    Width = 108
     Caption = 'Gopher Address:'
     ParentColor = False
   end
   object GopherAddr: TEdit
     AnchorSideLeft.Control = Label1
     AnchorSideLeft.Side = asrBottom
-    Left = 113
-    Height = 22
+    Left = 116
+    Height = 23
     Top = 1
     Width = 736
     TabOrder = 0
@@ -30,7 +30,7 @@ object Form1: TForm1
   object EngageBtn: TButton
     AnchorSideLeft.Control = GopherAddr
     AnchorSideLeft.Side = asrBottom
-    Left = 849
+    Left = 852
     Height = 25
     Top = 1
     Width = 75
@@ -42,7 +42,7 @@ object Form1: TForm1
   object StatusBar: TStatusBar
     Left = 0
     Height = 19
-    Top = 548
+    Top = 545
     Width = 926
     Panels = <>
     SimpleText = 'Ready.'
@@ -67,7 +67,7 @@ object Form1: TForm1
         Height = 522
         Top = 0
         Width = 304
-        DefaultItemHeight = 16
+        DefaultItemHeight = 18
         Images = TreeImages
         PopupMenu = TreeMenu
         ReadOnly = True
@@ -92,7 +92,6 @@ object Form1: TForm1
         Height = 522
         Top = 0
         Width = 613
-        DataProvider = FileDataProvider
         FixedTypeface = 'Courier New'
         DefaultTypeFace = 'default'
         DefaultFontSize = 12
@@ -102,6 +101,7 @@ object Form1: TForm1
         PrintSettings.MarginRight = 0.5
         PrintSettings.MarginBottom = 0.5
         TabOrder = 0
+        OnDocumentOpen = IpHtmlPanel1DocumentOpen
       end
       object ImageViewer: TImage
         Left = -7
@@ -343,10 +343,6 @@ object Form1: TForm1
       7CFF858585FF686868FF646464FF737373FF717171FF8A8A8AFF8A8A8AFF8A8A
       8AFF8A8A8AFF919191DAA0A0A04E
     }
-  end
-  object FileDataProvider: TIpFileDataProvider
-    left = 749
-    top = 506
   end
   object ImageMenu: TPopupMenu
     left = 658

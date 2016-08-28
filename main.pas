@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, IpHtml, Ipfilebroker, Forms, Controls, Graphics,
   Dialogs, ComCtrls, ExtCtrls, StdCtrls, Menus, ExtDlgs, PairSplitter,
-  gopherclient, URIParser, base64;
+  gopherclient, URIParser, strutils, IpMsg, browser;
 
 type
 
@@ -36,7 +36,7 @@ type
     SaveImage: TMenuItem;
     SavePictureDialog: TSavePictureDialog;
     TreeImages: TImageList;
-    FileDataProvider: TIpFileDataProvider;
+    GopherDataProvider: TGopherDataProvider;
     IpHtmlPanel1: TIpHtmlPanel;
     Label1: TLabel;
     TreeView1: TTreeView;
@@ -46,6 +46,7 @@ type
     procedure ExitAppClick(Sender: TObject);
     procedure FormResize(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure IpHtmlPanel1DocumentOpen(Sender: TObject);
     procedure RemoveNodeItemClick(Sender: TObject);
     procedure SaveImageClick(Sender: TObject);
     procedure SaveItemClick(Sender: TObject);
@@ -53,7 +54,6 @@ type
     procedure TreeView1Click(Sender: TObject);
     procedure TreeView1Expanding(Sender: TObject; Node: TTreeNode;
       var AllowExpansion: Boolean);
-    procedure GetImage(Sender: TIpHtmlNode; const URL: String; var Picture: TPicture);
   private
     GopherItems: Array of PGopherMenu;
     BookmarkNode: TTreeNode;
@@ -80,7 +80,8 @@ var
   root: TTreeNode;
 begin
   StatusBar.SimpleText:='Initializing...';
-  FileDataProvider.OnGetImage:=@GetImage;
+  GopherDataProvider:=TGopherDataProvider.Create(Self);
+  IpHtmlPanel1.DataProvider:=GopherDataProvider;
   SetLength(GopherItems, 0);
   BookmarkNode:=TreeView1.Items.Add(nil, 'Bookmarks');
   BookmarkNode.ImageIndex:=0;
@@ -92,6 +93,12 @@ begin
   PopulateNode(root, 'gopher.veroneau.net', 70, '');
   root.Expand(False);
   StatusBar.SimpleText:='Ready.';
+end;
+
+procedure TForm1.IpHtmlPanel1DocumentOpen(Sender: TObject);
+begin
+  GopherAddr.Text:=IpHtmlPanel1.CurURL;
+  Caption:='Gopher - '+IpHtmlPanel1.Title;
 end;
 
 procedure TForm1.RemoveNodeItemClick(Sender: TObject);
@@ -116,6 +123,7 @@ var
   data: TMemoryStream;
   data_ok: Boolean;
   ext: String;
+  Picture: TPicture;
 begin
   data_ok:=False;
   if (TreeView1.Selected <> nil) and (TreeView1.Selected.Data <> nil) then
@@ -139,7 +147,19 @@ begin
           else
             SaveItemDialog.DefaultExt:=ext;
         end;
-      'I': ShowMessage('Open the image and right-click to save it.');
+      'I', 'g':
+        begin
+          if SavePictureDialog.Execute then
+          begin
+            Picture:=TPicture.Create;
+            gopher:=TGopherClient.Create(Self);
+            gopher.SetHost(item^.host, item^.port);
+            Picture.LoadFromStream(gopher.SendSelector(item^.selector, False));
+            gopher.Free;
+            Picture.SaveToFile(SavePictureDialog.FileName, ExtractFileExt(SavePictureDialog.FileName));
+            Picture.Free;
+          end;
+        end
       else
         ShowMessage('This Gopher type is currently unsupported.');
     end;
@@ -211,6 +231,7 @@ begin
         root.SelectedIndex:=0;
         PopulateNode(root, uri.Host, uri.Port, selector);
       end;
+    'h': IpHtmlPanel1.OpenURL(GopherAddr.Text);
   end;
   StatusBar.SimpleText:='Ready.';
 end;
@@ -297,13 +318,15 @@ begin
       '9': SaveItemClick(TreeView1);
       'h':
         begin
-          gopher:=TGopherClient.Create(Self);
+          {gopher:=TGopherClient.Create(Self);
           gopher.SetHost(item^.host, item^.port);
           IpHtmlPanel1.Visible:=True;
           IpHtmlPanel1.SetHtmlFromStream(gopher.SendSelector(item^.selector, False));
-          gopher.Free;
+          gopher.Free;}
+          IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+item^.selector);
         end;
-      'I':
+      'I', 'g': IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+ReplaceStr(item^.selector, ' ','%20'));
+      'x':
         begin
           gopher:=TGopherClient.Create(Self);
           gopher.SetHost(item^.host, item^.port);
@@ -330,26 +353,6 @@ begin
     PopulateNode(Node, item^.host, item^.port, item^.selector);
     StatusBar.SimpleText:='Ready.';
   end;
-end;
-
-procedure TForm1.GetImage(Sender: TIpHtmlNode; const URL: String;
-  var Picture: TPicture);
-var
-  data: TStringList;
-  strm: TMemoryStream;
-  buf: String;
-begin
-  strm:=TMemoryStream.Create;
-  data:=TStringList.Create;
-  data.Delimiter:=',';
-  data.StrictDelimiter:=True;
-  data.DelimitedText:=URL;
-  buf:=DecodeStringBase64(data[1]);
-  strm.Write(buf[1], Length(buf));
-  data.Free;
-  strm.Seek(0, soBeginning);
-  {Picture.LoadFromStream(strm);}
-  strm.Free;
 end;
 
 function TForm1.GetPointer(MenuItem: TGopherMenu): PGopherMenu;
@@ -400,7 +403,7 @@ begin
         '7': item.ImageIndex:=3;
         '9': item.ImageIndex:=6;
         'h': item.ImageIndex:=2;
-        'I': item.ImageIndex:=5;
+        'I', 'g': item.ImageIndex:=5;
       else
         item.ImageIndex:=4;
       end;
