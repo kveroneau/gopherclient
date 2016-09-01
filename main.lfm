@@ -24,16 +24,17 @@ object Form1: TForm1
     Left = 116
     Height = 23
     Top = 1
-    Width = 736
+    Width = 460
+    Anchors = [akTop, akLeft, akRight]
     TabOrder = 0
   end
   object EngageBtn: TButton
     AnchorSideLeft.Control = GopherAddr
     AnchorSideLeft.Side = asrBottom
-    Left = 852
+    Left = 576
     Height = 25
     Top = 1
-    Width = 75
+    Width = 72
     Caption = 'Engage'
     Default = True
     OnClick = EngageBtnClick
@@ -112,6 +113,28 @@ object Form1: TForm1
         Visible = False
       end
     end
+  end
+  object SearchText: TEdit
+    Left = 656
+    Height = 23
+    Top = 2
+    Width = 243
+    Anchors = [akTop, akRight]
+    OnClick = SearchTextClick
+    TabOrder = 4
+    Text = 'Search...'
+  end
+  object SearchBtn: TSpeedButton
+    AnchorSideLeft.Control = SearchText
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideRight.Side = asrBottom
+    Left = 899
+    Height = 22
+    Top = 2
+    Width = 23
+    Anchors = [akTop, akLeft, akRight]
+    OnClick = SearchBtnClick
+    PopupMenu = SearchMenu
   end
   object TreeImages: TImageList
     left = 256
@@ -358,11 +381,17 @@ object Form1: TForm1
     top = 512
   end
   object TreeMenu: TPopupMenu
+    OnPopup = TreeMenuPopup
     left = 204
     top = 516
     object BMItem: TMenuItem
       Caption = 'Bookmark item'
       OnClick = BookmarkItemClick
+    end
+    object AddSearchItem: TMenuItem
+      Caption = 'Add to Search...'
+      Enabled = False
+      OnClick = AddSearchItemClick
     end
     object SaveItem: TMenuItem
       Caption = 'Save Item As...'
@@ -400,5 +429,9 @@ object Form1: TForm1
         OnClick = AboutAppClick
       end
     end
+  end
+  object SearchMenu: TPopupMenu
+    left = 871
+    top = 51
   end
 end

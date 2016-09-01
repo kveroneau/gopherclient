@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, IpHtml, Ipfilebroker, Forms, Controls, Graphics,
-  Dialogs, ComCtrls, ExtCtrls, StdCtrls, Menus, ExtDlgs, PairSplitter,
+  Dialogs, ComCtrls, ExtCtrls, StdCtrls, Menus, ExtDlgs, PairSplitter, Buttons,
   gopherclient, URIParser, strutils, IpMsg, browser;
 
 type
@@ -14,6 +14,9 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
+    AddSearchItem: TMenuItem;
+    SearchMenu: TPopupMenu;
+    SearchText: TEdit;
     EngageBtn: TButton;
     GopherAddr: TEdit;
     ImageViewer: TImage;
@@ -26,6 +29,7 @@ type
     BookmarkItem: TMenuItem;
     BMItem: TMenuItem;
     PaneSplitter: TPairSplitter;
+    SearchBtn: TSpeedButton;
     TreePane: TPairSplitterSide;
     ViewPane: TPairSplitterSide;
     RemoveNodeItem: TMenuItem;
@@ -41,6 +45,7 @@ type
     Label1: TLabel;
     TreeView1: TTreeView;
     procedure AboutAppClick(Sender: TObject);
+    procedure AddSearchItemClick(Sender: TObject);
     procedure BookmarkItemClick(Sender: TObject);
     procedure EngageBtnClick(Sender: TObject);
     procedure ExitAppClick(Sender: TObject);
@@ -50,18 +55,27 @@ type
     procedure RemoveNodeItemClick(Sender: TObject);
     procedure SaveImageClick(Sender: TObject);
     procedure SaveItemClick(Sender: TObject);
+    procedure SearchBtnClick(Sender: TObject);
+    procedure SearchTextClick(Sender: TObject);
+    procedure TreeMenuPopup(Sender: TObject);
     procedure TreePaneResize(Sender: TObject);
     procedure TreeView1Click(Sender: TObject);
     procedure TreeView1Expanding(Sender: TObject; Node: TTreeNode;
       var AllowExpansion: Boolean);
+    procedure GopherSearchClick(Sender: TObject);
   private
     GopherItems: Array of PGopherMenu;
+    SearchProviders: Array of PGopherMenu;
     BookmarkNode: TTreeNode;
     function GetPointer(MenuItem: TGopherMenu): PGopherMenu;
     procedure PopulateNode(Node: TTreeNode; host: String; port: Integer; selector: String);
     procedure PopulateNode(Node: TTreeNode; MenuItems: AGopherMenu);
     procedure SaveBookmarks;
     procedure LoadBookmarks;
+    procedure AddSearchProvider(const title: String; const selector: String; const host: String; const port: Integer);
+    function GetSearchProvider(const title: String): PGopherMenu;
+    procedure SaveSearchProviders;
+    procedure LoadSearchProviders;
   public
     { public declarations }
   end;
@@ -79,6 +93,7 @@ procedure TForm1.FormShow(Sender: TObject);
 var
   root: TTreeNode;
 begin
+  TreeImages.GetBitmap(3, SearchBtn.Glyph);
   StatusBar.SimpleText:='Initializing...';
   GopherDataProvider:=TGopherDataProvider.Create(Self);
   IpHtmlPanel1.DataProvider:=GopherDataProvider;
@@ -87,6 +102,12 @@ begin
   BookmarkNode.ImageIndex:=0;
   BookmarkNode.SelectedIndex:=0;
   LoadBookmarks;
+  LoadSearchProviders;
+  if Length(SearchProviders) = 0 then
+  begin
+    AddSearchProvider('Veronica-2', '/v2/vs', 'gopher.floodgap.com', 70);
+    AddSearchProvider('Gopherpedia', '/lookup', 'gopherpedia.com', 70);
+  end;
   root:=TreeView1.Items.Add(nil, 'gopher.veroneau.net:70');
   root.ImageIndex:=0;
   root.SelectedIndex:=0;
@@ -177,6 +198,25 @@ begin
   end;
 end;
 
+procedure TForm1.SearchBtnClick(Sender: TObject);
+begin
+  SearchBtn.PopupMenu.PopUp;
+end;
+
+procedure TForm1.SearchTextClick(Sender: TObject);
+begin
+  SearchText.Clear;
+end;
+
+procedure TForm1.TreeMenuPopup(Sender: TObject);
+begin
+  if (TreeView1.Selected <> nil) and (TreeView1.Selected.Data <> nil) then
+    if PGopherMenu(TreeView1.Selected.Data)^.gtype = '7' then
+      AddSearchItem.Enabled:=True
+    else
+      AddSearchItem.Enabled:=False;
+end;
+
 procedure TForm1.TreePaneResize(Sender: TObject);
 begin
   TreeView1.Width:=TreePane.Width;
@@ -191,7 +231,7 @@ procedure TForm1.FormResize(Sender: TObject);
 begin
   PaneSplitter.Width:=Width;
   PaneSplitter.Height:=Height-22-19-25;
-  GopherAddr.Width:=Width-Label1.Width-EngageBtn.Width-5;
+  GopherAddr.Width:=Width-Label1.Width-EngageBtn.Width-SearchText.Width-SearchBtn.Width-10;
   TreePaneResize(Self);
 end;
 
@@ -239,6 +279,24 @@ end;
 procedure TForm1.AboutAppClick(Sender: TObject);
 begin
   ShowMessage('Cross-platform Gopher client!');
+end;
+
+procedure TForm1.AddSearchItemClick(Sender: TObject);
+var
+  item: PGopherMenu;
+begin
+  if (TreeView1.Selected <> nil) and (TreeView1.Selected.Data <> nil) then
+  begin
+    item:=TreeView1.Selected.Data;
+    if item^.gtype <> '7' then
+      Exit;
+    if GetSearchProvider(item^.name) <> nil then
+    begin
+      ShowMessage('This Search provider has already been added.');
+      Exit;
+    end;
+    AddSearchProvider(item^.name, item^.selector, item^.host, item^.port);
+  end;
 end;
 
 procedure TForm1.BookmarkItemClick(Sender: TObject);
@@ -355,6 +413,21 @@ begin
   end;
 end;
 
+procedure TForm1.GopherSearchClick(Sender: TObject);
+var
+  item: PGopherMenu;
+  root: TTreeNode;
+begin
+  item:=GetSearchProvider(TMenuItem(Sender).Caption);
+  TreeView1.Selected:=nil;
+  root:=TreeView1.Items.Add(nil, SearchText.Text);
+  root.ImageIndex:=3;
+  root.SelectedIndex:=3;
+  PopulateNode(root, item^.host, item^.port, item^.selector+#9+SearchText.Text);
+  Dispose(item);
+  SearchText.Text:='Search...';
+end;
+
 function TForm1.GetPointer(MenuItem: TGopherMenu): PGopherMenu;
 var
   i: Integer;
@@ -458,6 +531,93 @@ begin
   gopher.Free;
   f.Free;
   PopulateNode(BookmarkNode, MenuItems);
+end;
+
+procedure TForm1.AddSearchProvider(const title: String; const selector: String;
+  const host: String; const port: Integer);
+var
+  item: TMenuItem;
+  i: Integer;
+begin
+  item:=TMenuItem.Create(Self);
+  item.Caption:=title;
+  item.OnClick:=@GopherSearchClick;
+  SearchMenu.Items.Add(item);
+  i:=Length(SearchProviders);
+  SetLength(SearchProviders, i+1);
+  New(SearchProviders[i]);
+  SearchProviders[i]^.gtype:='7';
+  SearchProviders[i]^.name:=title;
+  SearchProviders[i]^.selector:=selector;
+  SearchProviders[i]^.host:=host;
+  SearchProviders[i]^.port:=port;
+  SaveSearchProviders;
+end;
+
+function TForm1.GetSearchProvider(const title: String): PGopherMenu;
+var
+  item: PGopherMenu;
+begin
+  Result:=nil;
+  for item in SearchProviders do
+    if item^.name = title then
+      Result:=item
+end;
+
+procedure TForm1.SaveSearchProviders;
+var
+  fname: String;
+  f: TMemoryStream;
+  item: PGopherMenu;
+begin
+  f:=TMemoryStream.Create;
+  {$IFDEF DARWIN}
+  fname:=GetEnvironmentVariable('HOME')+'/.searchproviders.dat';
+  {$ELSE}
+  fname:='searchproviders.dat';
+  {$ENDIF}
+  for item in SearchProviders do
+  begin
+    f.WriteAnsiString(item^.name);
+    f.WriteAnsiString(item^.host);
+    f.WriteWord(item^.port);
+    f.WriteAnsiString(item^.selector);
+  end;
+  f.SaveToFile(fname);
+  f.Free;
+end;
+
+procedure TForm1.LoadSearchProviders;
+var
+  fname: String;
+  f: TMemoryStream;
+  i: Integer;
+  item: TMenuItem;
+begin
+  {$IFDEF DARWIN}
+  fname:=GetEnvironmentVariable('HOME')+'/.searchproviders.dat';
+  {$ELSE}
+  fname:='searchproviders.dat';
+  {$ENDIF}
+  if not FileExists(fname) then
+    Exit;
+  f:=TMemoryStream.Create;
+  f.LoadFromFile(fname);
+  Repeat
+    i:=Length(SearchProviders);
+    SetLength(SearchProviders, i+1);
+    New(SearchProviders[i]);
+    SearchProviders[i]^.gtype:='7';
+    SearchProviders[i]^.name:=f.ReadAnsiString;
+    SearchProviders[i]^.host:=f.ReadAnsiString;
+    SearchProviders[i]^.port:=f.ReadWord;
+    SearchProviders[i]^.selector:=f.ReadAnsiString;
+    item:=TMenuItem.Create(Self);
+    item.Caption:=SearchProviders[i]^.name;
+    item.OnClick:=@GopherSearchClick;
+    SearchMenu.Items.Add(item);
+  Until (f.Position>=f.Size);
+  f.Free;
 end;
 
 end.
