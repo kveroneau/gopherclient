@@ -1,0 +1,32 @@
+object DownloadManager: TDownloadManager
+  Left = 729
+  Height = 254
+  Top = 389
+  Width = 449
+  BorderIcons = [biSystemMenu, biMinimize]
+  BorderStyle = bsSingle
+  Caption = 'Download Manager'
+  ClientHeight = 254
+  ClientWidth = 449
+  OnCreate = FormCreate
+  LCLVersion = '1.4.4.0'
+  object DownloadList: TListView
+    Left = 0
+    Height = 254
+    Top = 0
+    Width = 451
+    Columns = <    
+      item
+        AutoSize = True
+        Caption = 'Item'
+        Width = 37
+      end    
+      item
+        Caption = 'State'
+        Width = 410
+      end>
+    ScrollBars = ssAutoBoth
+    TabOrder = 0
+    ViewStyle = vsReport
+  end
+end

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, IpHtml, Ipfilebroker, Forms, Controls, Graphics,
   Dialogs, ComCtrls, ExtCtrls, StdCtrls, Menus, ExtDlgs, PairSplitter, Buttons,
-  gopherclient, URIParser, strutils, IpMsg, browser;
+  gopherclient, URIParser, strutils, IpMsg, browser, downloadmgr;
 
 type
 
@@ -15,6 +15,10 @@ type
 
   TForm1 = class(TForm)
     AddSearchItem: TMenuItem;
+    FontDialog: TFontDialog;
+    FontSelect: TMenuItem;
+    ShowDM: TMenuItem;
+    OptionsMenu: TMenuItem;
     SearchMenu: TPopupMenu;
     SearchText: TEdit;
     EngageBtn: TButton;
@@ -49,6 +53,7 @@ type
     procedure BookmarkItemClick(Sender: TObject);
     procedure EngageBtnClick(Sender: TObject);
     procedure ExitAppClick(Sender: TObject);
+    procedure FontSelectClick(Sender: TObject);
     procedure FormResize(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure IpHtmlPanel1DocumentOpen(Sender: TObject);
@@ -57,6 +62,7 @@ type
     procedure SaveItemClick(Sender: TObject);
     procedure SearchBtnClick(Sender: TObject);
     procedure SearchTextClick(Sender: TObject);
+    procedure ShowDMClick(Sender: TObject);
     procedure TreeMenuPopup(Sender: TObject);
     procedure TreePaneResize(Sender: TObject);
     procedure TreeView1Click(Sender: TObject);
@@ -94,6 +100,7 @@ var
   root: TTreeNode;
 begin
   TreeImages.GetBitmap(3, SearchBtn.Glyph);
+  DownloadManager.DownloadList.SmallImages:=TreeImages;
   StatusBar.SimpleText:='Initializing...';
   GopherDataProvider:=TGopherDataProvider.Create(Self);
   IpHtmlPanel1.DataProvider:=GopherDataProvider;
@@ -141,23 +148,15 @@ procedure TForm1.SaveItemClick(Sender: TObject);
 var
   item: PGopherMenu;
   gopher: TGopherClient;
-  data: TMemoryStream;
-  data_ok: Boolean;
   ext: String;
   Picture: TPicture;
 begin
-  data_ok:=False;
   if (TreeView1.Selected <> nil) and (TreeView1.Selected.Data <> nil) then
   begin
     item := TreeView1.Selected.Data;
     Case item^.gtype of
       '0','h','9':
         begin
-          gopher:=TGopherClient.Create(Self);
-          gopher.SetHost(item^.host, item^.port);
-          data:=gopher.SendSelector(item^.selector, False);
-          gopher.Free;
-          data_ok:=True;
           SaveItemDialog.FileName:=ExtractFileNameOnly(item^.selector);
           ext:=ExtractFileExt(item^.selector);
           if ext = '' then
@@ -167,34 +166,23 @@ begin
               SaveItemDialog.DefaultExt:='txt'
           else
             SaveItemDialog.DefaultExt:=ext;
+          if SaveItemDialog.Execute then
+          begin
+            DownloadManager.Show;
+            DownloadManager.AddDownload(item, SaveItemDialog.FileName);
+          end;
         end;
       'I', 'g':
         begin
           if SavePictureDialog.Execute then
           begin
-            Picture:=TPicture.Create;
-            gopher:=TGopherClient.Create(Self);
-            gopher.SetHost(item^.host, item^.port);
-            Picture.LoadFromStream(gopher.SendSelector(item^.selector, False));
-            gopher.Free;
-            Picture.SaveToFile(SavePictureDialog.FileName, ExtractFileExt(SavePictureDialog.FileName));
-            Picture.Free;
+            DownloadManager.Show;
+            DownloadManager.AddDownload(item, SavePictureDialog.FileName);
           end;
         end
       else
         ShowMessage('This Gopher type is currently unsupported.');
     end;
-  end;
-  if data_ok then
-  begin
-    if SaveItemDialog.Execute then
-      try
-        data.SaveToFile(SaveItemDialog.FileName);
-      except
-        StatusBar.SimpleText:='Error saving file.';
-        ShowMessage('There was an error while trying to save the file.');
-      end;
-    data.Free;
   end;
 end;
 
@@ -206,6 +194,11 @@ end;
 procedure TForm1.SearchTextClick(Sender: TObject);
 begin
   SearchText.Clear;
+end;
+
+procedure TForm1.ShowDMClick(Sender: TObject);
+begin
+  DownloadManager.Show;
 end;
 
 procedure TForm1.TreeMenuPopup(Sender: TObject);
@@ -319,6 +312,17 @@ begin
   Close;
 end;
 
+procedure TForm1.FontSelectClick(Sender: TObject);
+begin
+  FontDialog.Font.Size:=IpHtmlPanel1.DefaultFontSize;
+  if FontDialog.Execute then
+  begin
+    IpHtmlPanel1.DefaultFontSize:=FontDialog.Font.Size;
+    TreeView1.Font:=FontDialog.Font;
+    IpHtmlPanel1.OpenURL(GopherAddr.Text);
+  end;
+end;
+
 procedure TForm1.TreeView1Click(Sender: TObject);
 var
   item: PGopherMenu;
@@ -355,7 +359,10 @@ begin
           data.Write('<pre>', 5);
           for entry in MenuItems do
           begin
-            buf := entry.name+#13#10;
+            if entry.gtype = 'i' then
+              buf := entry.name+#13#10
+            else
+              buf := '<a href="gopher://'+entry.host+':'+IntToStr(entry.port)+'/'+entry.gtype+entry.selector+'">'+entry.name+'</a>'+#13#10;
             data.Write(buf[1], Length(buf));
           end;
           data.Write('</pre>', 6);
@@ -383,8 +390,8 @@ begin
           gopher.Free;}
           IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+item^.selector);
         end;
-      'I', 'g': IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+ReplaceStr(item^.selector, ' ','%20'));
-      'x':
+      'x': IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+ReplaceStr(item^.selector, ' ','%20'));
+      'I', 'g':
         begin
           gopher:=TGopherClient.Create(Self);
           gopher.SetHost(item^.host, item^.port);

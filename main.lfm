@@ -105,11 +105,12 @@ object Form1: TForm1
         OnDocumentOpen = IpHtmlPanel1DocumentOpen
       end
       object ImageViewer: TImage
-        Left = -7
+        Left = 0
         Height = 522
         Top = 0
         Width = 613
         PopupMenu = ImageMenu
+        Proportional = True
         Visible = False
       end
     end
@@ -416,9 +417,20 @@ object Form1: TForm1
         Caption = '&Bookmark'
         OnClick = BookmarkItemClick
       end
+      object ShowDM: TMenuItem
+        Caption = 'Download Manager'
+        OnClick = ShowDMClick
+      end
       object ExitApp: TMenuItem
         Caption = '&Exit'
         OnClick = ExitAppClick
+      end
+    end
+    object OptionsMenu: TMenuItem
+      Caption = '&Options'
+      object FontSelect: TMenuItem
+        Caption = '&Fonts...'
+        OnClick = FontSelectClick
       end
     end
     object HelpMenu: TMenuItem
@@ -433,5 +445,11 @@ object Form1: TForm1
   object SearchMenu: TPopupMenu
     left = 871
     top = 51
+  end
+  object FontDialog: TFontDialog
+    MinFontSize = 0
+    MaxFontSize = 0
+    left = 333
+    top = 47
   end
 end

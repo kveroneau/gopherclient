@@ -19,6 +19,8 @@ type
     function DoGetStream(const URL: string): TStream; override;
     function GetHtmlStream(const URL : string; PostData : TIpFormDataEntity) : TStream; override;
     procedure GetImage(Sender: TIpHtmlNode; const URL: String; var Picture: TPicture); override;
+  private
+    function GetMenu(MenuItems: AGopherMenu): TStream;
   end;
 
 implementation
@@ -40,6 +42,7 @@ begin
   Case uri.Path[2] of
     'h': ContentType:='text/html';
     '0': ContentType:='text/plain';
+    '1': ContentType:='text/x-gopher-menu';
     'I': ContentType:='image/png';
     'g': ContentType:='image/gif';
   end;
@@ -68,7 +71,17 @@ begin
     selector:=selector+'?'+uri.Params;
   gopher:=TGopherClient.Create(Self);
   gopher.SetHost(uri.Host, uri.Port);
-  Result:=gopher.SendSelector(selector, False);
+  if uri.Path[2] = '1' then
+  begin
+    Result:=GetMenu(gopher.GetMenu(selector));
+    gopher.Free;
+    selector:='';
+    Exit;
+  end;
+  if uri.Path[2] = '0' then
+    Result:=gopher.SendSelector(selector, True)
+  else
+    Result:=gopher.SendSelector(selector, False);
   gopher.Free;
   selector:='';
 end;
@@ -108,6 +121,25 @@ begin
     Picture.LoadFromStream(gopher.SendSelector(buf, False));
     gopher.Free;
   end;
+end;
+
+function TGopherDataProvider.GetMenu(MenuItems: AGopherMenu): TStream;
+var
+  entry: TGopherMenu;
+  buf: String;
+begin
+  Result:=TMemoryStream.Create;
+  Result.Write('<pre>', 5);
+  for entry in MenuItems do
+  begin
+    if entry.gtype = 'i' then
+      buf := entry.name+#13#10
+    else
+      buf := '<a href="gopher://'+entry.host+':'+IntToStr(entry.port)+'/'+entry.gtype+ReplaceStr(entry.selector, ' ', '%20')+'">'+entry.name+'</a>'+#13#10;
+    Result.Write(buf[1], Length(buf));
+  end;
+  Result.Write('</pre>', 6);
+  Result.Seek(0, soBeginning);
 end;
 
 end.
