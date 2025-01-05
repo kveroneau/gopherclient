@@ -157,7 +157,7 @@ begin
     Case item^.gtype of
       '0','h','9':
         begin
-          SaveItemDialog.FileName:=ExtractFileNameOnly(item^.selector);
+          SaveItemDialog.FileName:=ExtractFileNameWithoutExt(item^.selector);
           ext:=ExtractFileExt(item^.selector);
           if ext = '' then
             if item^.gtype = 'h' then
