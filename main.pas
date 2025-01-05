@@ -381,15 +381,7 @@ begin
           PopulateNode(root, item^.host, item^.port, item^.selector+#9+buf);
         end;
       '9': SaveItemClick(TreeView1);
-      'h':
-        begin
-          {gopher:=TGopherClient.Create(Self);
-          gopher.SetHost(item^.host, item^.port);
-          IpHtmlPanel1.Visible:=True;
-          IpHtmlPanel1.SetHtmlFromStream(gopher.SendSelector(item^.selector, False));
-          gopher.Free;}
-          IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+item^.selector);
-        end;
+      'h': IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+item^.selector);
       'x': IpHtmlPanel1.OpenURL('gopher://'+item^.host+':'+IntToStr(item^.port)+'/'+item^.gtype+ReplaceStr(item^.selector, ' ','%20'));
       'I', 'g':
         begin

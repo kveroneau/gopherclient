@@ -55,7 +55,9 @@ end;
 function TGopherDataProvider.DoGetStream(const URL: string): TStream;
 begin
   Result:=TMemoryStream.Create;
+  {$IFDEF DEBUG}
   WriteLn('DoGetStream: ',URL);
+  {$ENDIF}
 end;
 
 function TGopherDataProvider.GetHtmlStream(const URL: string;

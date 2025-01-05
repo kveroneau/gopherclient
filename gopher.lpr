@@ -14,6 +14,7 @@ uses
 
 begin
   RequireDerivedFormResource := True;
+  Application.Title:='Gopher Client';
   Application.Initialize;
   Application.CreateForm(TForm1, Form1);
   Application.CreateForm(TDownloadManager, DownloadManager);
